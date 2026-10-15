@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="apple-mobile-web-app-capable" content="yes"><title>Shift Tracker</title>
+<style>body{font-family:system-ui;margin:0;padding:12px;background:#111;color:#eee}input,button{font-size:16px;padding:10px;margin:4px 0;width:100%;box-sizing:border-box;border-radius:8px;border:1px solid #444;background:#222;color:#eee}button{background:#2a7;border:0;font-weight:bold}.row{display:flex;gap:6px}.card{background:#1c1c1c;padding:10px;border-radius:10px;margin:8px 0}small{color:#aaa}.del{background:#a33;width:auto;padding:4px 10px}</style></head><body>
+<h2>Shift Tracker</h2>
+<div class="card"><input id="d" type="date"><input id="app" placeholder="App (DoorDash, Uber...)">
+<div class="row"><input id="s" type="time"><input id="e" type="time"></div>
+<div class="row"><input id="o" type="number" placeholder="Orders"><input id="m" type="number" step="0.1" placeholder="Miles"></div>
+<div class="row"><input id="p" type="number" step="0.01" placeholder="Total $"><input id="g" type="number" step="0.01" placeholder="Gas $"></div>
+<input id="n" placeholder="Notes"><button onclick="add()">Save shift</button></div>
+<div id="tot" class="card"></div><div id="list"></div>
+<div class="row"><button onclick="exp()">Export backup</button><button onclick="imp()">Import backup</button></div>
+<script>
+const K='shifts';let S=JSON.parse(localStorage.getItem(K)||'[]');
+const $=i=>document.getElementById(i);$('d').valueAsDate=new Date();
+function hrs(x){if(!x.s||!x.e)return 0;let[a,b]=x.s.split(':').map(Number),[c,d]=x.e.split(':').map(Number);let h=(c*60+d-a*60-b)/60;return h<0?h+24:h}
+function add(){S.unshift({d:$('d').value,app:$('app').value,s:$('s').value,e:$('e').value,o:+$('o').value||0,m:+$('m').value||0,p:+$('p').value||0,g:+$('g').value||0,n:$('n').value});save();['s','e','o','m','p','g','n'].forEach(i=>$(i).value='')}
+function save(){localStorage.setItem(K,JSON.stringify(S));draw()}
+function del(i){if(confirm('Delete shift?')){S.splice(i,1);save()}}
+function sum(a){let p=0,g=0,m=0,h=0,o=0;a.forEach(x=>{p+=x.p;g+=x.g;m+=x.m;h+=hrs(x);o+=x.o});return `$${p.toFixed(2)} gross, $${(p-g).toFixed(2)} net, ${o} orders, ${m.toFixed(1)} mi, ${h.toFixed(1)} hr${h?`, $${((p-g)/h).toFixed(2)}/hr`:''}${m?`, $${(p/m).toFixed(2)}/mi`:''}`}
+function draw(){let now=new Date(),wk=new Date(now-6864e5*0+0);wk.setDate(now.getDate()-7);let mo=now.toISOString().slice(0,7);
+$('tot').innerHTML=`<b>Last 7 days:</b> ${sum(S.filter(x=>new Date(x.d)>=wk))}<br><b>This month:</b> ${sum(S.filter(x=>x.d.startsWith(mo)))}<br><b>All time:</b> ${sum(S)}`;
+$('list').innerHTML=S.map((x,i)=>`<div class="card"><b>${x.d}</b> ${x.app} <small>${x.s}-${x.e}</small><br>${sum([x])}${x.n?`<br><small>${x.n}</small>`:''} <button class="del" onclick="del(${i})">x</button></div>`).join('')}
+function exp(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)]));a.download='shifts.json';a.click()}
+function imp(){let f=document.createElement('input');f.type='file';f.onchange=()=>f.files[0].text().then(t=>{S=JSON.parse(t);save()});f.click()}
+draw();
+</script></body></html>
